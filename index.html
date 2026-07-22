@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libra Needs Analysis — HCV / GIT / Motor</title>
+<style>
+  :root{
+    --navy:#0B1F3A;
+    --navy-light:#132a4e;
+    --gold:#C9A227;
+    --ink:#1A1A1A;
+    --muted:#6B7280;
+    --border:#E5E7EB;
+    --bg:#F7F8FA;
+    --mono: 'Courier New', Courier, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);}
+
+  .masthead{
+    background:var(--navy); color:#fff; padding:14px 24px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  .masthead-left{display:flex; align-items:baseline; gap:12px;}
+  .masthead-left h1{font-size:20px; margin:0; letter-spacing:0.3px;}
+  .masthead-left .tag{
+    font-family:var(--mono); font-size:10px; color:var(--gold);
+    border:1px solid var(--gold); padding:2px 8px; border-radius:2px; letter-spacing:0.5px;
+  }
+  .masthead-right{display:flex; align-items:center; gap:10px;}
+  .masthead-right input{
+    font-family:var(--mono); font-size:11px; padding:5px 10px; border:1px solid #35507a;
+    border-radius:2px; background:#fff; color:var(--ink); width:220px;
+  }
+  #tokenStatus{font-family:var(--mono); font-size:11px;}
+  #tokenStatus.ok{color:#7CD992;}
+  #tokenStatus.bad{color:#F09090;}
+  #tokenStatus.pending{color:#D1D5DB;}
+
+  .wrap{max-width:980px; margin:0 auto; padding:24px 16px 120px;}
+
+  .intro{
+    background:#fff; border:1px solid var(--border); border-radius:4px;
+    padding:16px 20px; margin-bottom:20px; font-size:13px; color:var(--muted);
+  }
+  .intro strong{color:var(--ink);}
+
+  .section{
+    background:#fff; border:1px solid var(--border); border-radius:4px;
+    margin-bottom:16px; overflow:hidden;
+  }
+  .section-header{
+    background:var(--navy); color:#fff; padding:10px 16px;
+    font-size:12px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase;
+    display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+    user-select:none;
+  }
+  .section-header .chev{transition:transform 0.15s ease; font-family:var(--mono);}
+  .section.collapsed .section-header .chev{transform:rotate(-90deg);}
+  .section-body{padding:16px 20px;}
+  .section.collapsed .section-body{display:none;}
+
+  .field-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px 20px;}
+  .field-grid.single{grid-template-columns:1fr;}
+  .field{display:flex; flex-direction:column; gap:4px;}
+  .field.span2{grid-column:1 / -1;}
+  .field label{
+    font-family:var(--mono); font-size:10.5px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.4px;
+  }
+  .field input[type=text], .field input[type=number], .field input[type=date],
+  .field select, .field textarea{
+    font-family:var(--sans); font-size:13px; padding:7px 9px;
+    border:1px solid var(--border); border-radius:3px; background:#fff; color:var(--ink);
+    width:100%;
+  }
+  .field textarea{resize:vertical; min-height:52px;}
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none; border-color:var(--navy); box-shadow:0 0 0 2px rgba(11,31,58,0.08);
+  }
+  .field.yesno{flex-direction:row; align-items:center; gap:10px;}
+  .field.yesno label.q{
+    font-family:var(--sans); font-size:13px; color:var(--ink); text-transform:none;
+    letter-spacing:0; flex:1;
+  }
+  .field.yesno select{width:110px; flex-shrink:0;}
+  .field.pct{position:relative;}
+  .field.pct .pct-sign{
+    position:absolute; right:9px; top:29px; font-size:12px; color:var(--muted); pointer-events:none;
+  }
+
+  .rep-table{width:100%; border-collapse:collapse; margin-top:6px;}
+  .rep-table th{
+    background:#F3F4F6; font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
+    letter-spacing:0.3px; color:var(--muted); text-align:left; padding:8px 6px; border-bottom:2px solid var(--navy);
+  }
+  .rep-table td{padding:5px 6px; border-bottom:1px solid var(--border); vertical-align:top;}
+  .rep-table td input, .rep-table td select{
+    width:100%; font-size:12.5px; padding:5px 6px; border:1px solid var(--border); border-radius:3px;
+  }
+  .rep-table .rm-row{
+    background:none; border:none; color:#B91C1C; cursor:pointer; font-size:16px; line-height:1; padding:4px;
+  }
+  .add-row-btn{
+    margin-top:8px; background:none; border:1px dashed var(--muted); color:var(--muted);
+    font-family:var(--mono); font-size:11px; padding:6px 12px; border-radius:3px; cursor:pointer;
+  }
+  .add-row-btn:hover{border-color:var(--navy); color:var(--navy);}
+
+  .footer-bar{
+    position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--border);
+    padding:12px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    box-shadow:0 -2px 8px rgba(0,0,0,0.05);
+  }
+  .footer-bar .status{font-family:var(--mono); font-size:11px; color:var(--muted); flex:1;}
+  .generate-btn{
+    background:var(--gold); color:var(--navy); border:none; font-weight:700;
+    font-size:13px; padding:12px 28px; border-radius:3px; cursor:pointer; letter-spacing:0.3px;
+  }
+  .generate-btn:hover{filter:brightness(0.95);}
+  .generate-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .generate-btn.loading::after{content:'…';}
+
+  .toast{
+    position:fixed; top:16px; right:16px; background:var(--navy); color:#fff;
+    padding:12px 18px; border-radius:4px; font-size:13px; max-width:340px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:999; display:none;
+  }
+  .toast.error{background:#7F1D1D;}
+  .toast.show{display:block;}
+
+  @media (max-width:640px){
+    .field-grid{grid-template-columns:1fr;}
+    .masthead-right input{width:150px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-left">
+    <h1>Libra Needs Analysis</h1>
+    <span class="tag">HCV / GIT / MOTOR</span>
+  </div>
+  <div class="masthead-right">
+    <input id="brokerTokenInput" type="text" placeholder="Enter your broker token"
+      onchange="localStorage.setItem('riya_broker_token', this.value.trim()); validateToken();">
+    <span id="tokenStatus" class="pending">Checking…</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="intro">
+    <strong>Digital HCV/GIT Needs Analysis.</strong> Complete the sections below, then generate a
+    Libra-branded PDF ready to send to Santam, Hollard, Lombard, ONE, Senate and Merx for quotes.
+    Click a section header to collapse or expand it. All fields are optional — leave blank what
+    doesn't apply to this client.
+  </div>
+
+  <div id="formRoot"></div>
+</div>
+
+<div class="footer-bar">
+  <span class="status" id="statusLine">Ready.</span>
+  <button class="generate-btn" id="generateBtn" onclick="generatePdf()">Generate Needs Analysis PDF</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BACKEND_URL = 'https://libra-needs-analysis-backend-production.up.railway.app';
+
+function getBrokerToken(){
+  return localStorage.getItem('riya_broker_token') || '';
+}
+
+const YESNO = [
+  {value:'', label:'Select'},
+  {value:'Yes', label:'Yes'},
+  {value:'No', label:'No'},
+];
+
+const LANGUAGE = [
+  {value:'', label:'Select'},
+  {value:'English', label:'English'},
+  {value:'Afrikaans', label:'Afrikaans'},
+];
+
+const DRIVERS_PER_VEHICLE = [
+  {value:'', label:'Select'},
+  {value:'1', label:'1'},
+  {value:'2', label:'2'},
+];
+
+const COMMODITY_ROWS = [
+  ['food','Food'],['freshProduce','Fresh Produce'],['livestock','Livestock'],
+  ['buildingMaterial','Building Material'],['steelProducts','Steel Products'],
+  ['heavyEquipment','Heavy Equipment'],['sandStone','Sand / Stone'],
+  ['coalMinerals','Coal / Other Minerals'],['alcohol','Alcohol'],['tobacco','Tobacco'],
+  ['electronicGoods','Electronic Goods'],['cellphones','Cellphones'],
+  ['hazardousChemicals','Hazardous Chemicals / Goods'],['copper','Copper'],
+];
+
+function commodityFields(prefix){
+  const fields = COMMODITY_ROWS.map(([id,label]) => ({
+    id:`${prefix}_${id}`, label, type:'percent'
+  }));
+  fields.push({id:`${prefix}_other_label`, label:'Other, specify', type:'text'});
+  fields.push({id:`${prefix}_other_pct`, label:'Other %', type:'percent'});
+  return fields;
+}
+
+const AREA_ROWS = [
+  ['rsa','RSA'],['lesotho','Lesotho'],['swaziland','Swaziland (Eswatini)'],
+  ['namibia','Namibia'],['botswana','Botswana'],['zimbabwe','Zimbabwe'],
+  ['mozambique','Mozambique'],['angola','Angola'],['zambia','Zambia'],
+  ['drcKolwezi','DRC to Kolwezi'],['malawi','Malawi'],['tanzania','Tanzania'],
+];
+
+const FORM_SECTIONS = [
+  {
+    id:'broker', title:'Broker Information',
+    fields:[
+      {id:'brokerName', label:'Broker Name', type:'text', default:'Libra Insurance Brokers'},
+      {id:'libraBranch', label:'Libra Branch', type:'text'},
+      {id:'libraBrokerName', label:'Libra Broker Name', type:'text'},
+      {id:'brokerEmail', label:'E-mail Address', type:'text'},
+      {id:'brokerContactNumber', label:'Contact Number', type:'text'},
+      {id:'brokerOfficeNumber', label:'Office Number', type:'text'},
+    ]
+  },
+  {
+    id:'proposer', title:'Proposer General Information',
+    fields:[
+      {id:'insuredName', label:'Name of Insured', type:'text', span2:true},
+      {id:'tradingName', label:'Trading Name', type:'text'},
+      {id:'policyNumber', label:'Policy Number', type:'text'},
+      {id:'directorName', label:'Director Name', type:'text'},
+      {id:'companyRegNumber', label:'Company Registration Number', type:'text'},
+      {id:'idNumber', label:'ID Number', type:'text'},
+      {id:'companyVatNumber', label:'Company VAT Number', type:'text'},
+      {id:'yearsInBusiness', label:'Years in Business', type:'text'},
+      {id:'postalAddress', label:'Postal Address', type:'text'},
+      {id:'postalCode', label:'Postal Code', type:'text'},
+      {id:'physicalAddress', label:'Physical Address', type:'text'},
+      {id:'physicalCode', label:'Physical Code', type:'text'},
+      {id:'businessDescription', label:'Business Description', type:'text', span2:true},
+      {id:'areaOfOperation', label:'Area of Operation', type:'text', span2:true},
+      {id:'natureOfGoodsTransported', label:'Nature of Goods Transported', type:'text', span2:true},
+      {id:'everDeclinedCancelled', label:'Has Libra or any other insurer ever declined an application, cancelled a policy, placed special conditions, refused renewal, or refused to continue cover?', type:'yesno'},
+      {id:'declinedDetails', label:'If so, please specify', type:'text', span2:true},
+      {id:'tradedDifferentName', label:'Have you ever traded under a different name?', type:'yesno'},
+      {id:'differentNameDetails', label:'If so, please provide the name/s', type:'text', span2:true},
+    ]
+  },
+  {
+    id:'contact', title:'Contact Information',
+    fields:[
+      {id:'contactPerson', label:'Contact Person', type:'text'},
+      {id:'telephoneNumber', label:'Telephone Number', type:'text'},
+      {id:'contactEmail', label:'E-mail Address', type:'text'},
+      {id:'preferredLanguage', label:'Preferred Language', type:'select', options:LANGUAGE},
+      {id:'altContactName', label:'Alternative Contact — Name', type:'text'},
+      {id:'altContactTel', label:'Alternative Contact — Tel', type:'text'},
+      {id:'altContactEmail', label:'Alternative Contact — E-mail', type:'text'},
+    ]
+  },
+  {
+    id:'banking', title:'Banking Details',
+    fields:[
+      {id:'bankName', label:'Bank Name', type:'text'},
+      {id:'branchNameCode', label:'Branch Name / Code', type:'text'},
+      {id:'accountNumber', label:'Account Number', type:'text'},
+      {id:'debitOrderDate', label:'Debit Order Date (1st or 15th)', type:'text'},
+      {id:'paymentMethod', label:'Payment Method (Monthly / Annually)', type:'text'},
+    ]
+  },
+  {
+    id:'areas', title:'Areas of Operation',
+    fields:[
+      ...AREA_ROWS.map(([id,label]) => ({id:`area_${id}`, label, type:'yesno'})),
+      {id:'area_other', label:'Other, specify', type:'text', span2:true},
+    ]
+  },
+  {
+    id:'commodities', title:'Commodities (fleet — please note percentages)',
+    fields: commodityFields('commodity')
+  },
+  {
+    id:'security', title:'Security & Risk Information',
+    fields:[
+      {id:'longHaulsPct', label:'Long Hauls', type:'percent'},
+      {id:'shortHaulsPct', label:'Short Hauls', type:'percent'},
+      {id:'travelInConvoy', label:'Do you travel in convoy?', type:'yesno'},
+      {id:'vehiclesEscorted', label:'Are your vehicles escorted?', type:'yesno'},
+      {id:'ownerDriver', label:'Are you an owner driver?', type:'yesno'},
+      {id:'driveNightHours', label:'Do you drive between 22:00 and 05:00?', type:'yesno'},
+      {id:'driversPerVehicle', label:'How many drivers per vehicle?', type:'select', options:DRIVERS_PER_VEHICLE},
+      {id:'employForeignDrivers', label:'Do you employ foreign drivers?', type:'yesno'},
+      {id:'foreignDriverCountries', label:'If so, from which countries', type:'text', span2:true},
+      {id:'telematicsSupplier', label:'Telematics — name of your supplier', type:'text', span2:true},
+      {id:'device2Cameras', label:'Device functionality — 2 x cameras', type:'yesno'},
+      {id:'device4Cameras', label:'Device functionality — 4 x cameras', type:'yesno'},
+      {id:'deviceFatigueMonitoring', label:'Device functionality — fatigue monitoring', type:'yesno'},
+      {id:'device247Monitoring', label:'Device functionality — 24/7 monitoring by supplier', type:'yesno'},
+      {id:'deviceOtherNotes', label:'Other device / telematics notes', type:'text', span2:true},
+    ]
+  },
+  {
+    id:'vehicleFeatures', title:'Standard Features in Vehicle',
+    fields:[
+      {id:'laneChangeSteeringAssist', label:'Lane change driver steering assist', type:'yesno'},
+      {id:'laneChangeWarning', label:'Lane change warning', type:'yesno'},
+      {id:'frontCollisionWarning', label:'Front collision warning', type:'yesno'},
+      {id:'frontCollisionBrakeAssist', label:'Front collision brake assist', type:'yesno'},
+      {id:'electronicStableBraking', label:'Electronic stable braking ability', type:'yesno'},
+      {id:'airSuspension', label:'Air suspension', type:'yesno'},
+      {id:'steelSuspension', label:'Steel suspension', type:'yesno'},
+    ]
+  },
+  {
+    id:'claimsHistory', title:'Motor Insurance & Claims History',
+    fields:[
+      {id:'currentInsurer', label:'Current Insurer', type:'text'},
+      {id:'currentPolicyNumber', label:'Policy Number', type:'text'},
+      {id:'prevInsurer1', label:'Previous Insurer 1', type:'text'},
+      {id:'prevPolicy1', label:'Previous Policy 1', type:'text'},
+      {id:'prevInsurer2', label:'Previous Insurer 2', type:'text'},
+      {id:'prevPolicy2', label:'Previous Policy 2', type:'text'},
+      {id:'prevInsurer3', label:'Previous Insurer 3', type:'text'},
+      {id:'prevPolicy3', label:'Previous Policy 3', type:'text'},
+      {id:'claimsHistoryNotes', label:'Claims History', type:'textarea', span2:true},
+      {id:'materialFacts', label:'Please Declare Any Material Facts', type:'textarea', span2:true},
+    ]
+  },
+  {
+    id:'motorFleet', title:'Motor Fleet',
+    fields:[
+      {id:'trucks3yAgo', label:'Trucks — 3 Years Ago', type:'text'},
+      {id:'trailers3yAgo', label:'Trailers — 3 Years Ago', type:'text'},
+      {id:'trucks2yAgo', label:'Trucks — 2 Years Ago', type:'text'},
+      {id:'trailers2yAgo', label:'Trailers — 2 Years Ago', type:'text'},
+      {id:'trucksCurrent', label:'Trucks — Currently', type:'text'},
+      {id:'trailersCurrent', label:'Trailers — Currently', type:'text'},
+      {id:'trailerCombination', label:'Trailer Combination', type:'yesno'},
+      {id:'acrossBorderRiotStrike', label:'Across Border Riot & Strike', type:'yesno'},
+      {id:'mechanicalTowIn', label:'Mechanical Tow-in', type:'yesno'},
+      {id:'mechanicalTowInLimit', label:'Mechanical Tow-in — Limit (R)', type:'text'},
+      {id:'crossBorderRepatriation', label:'Additional Cover — Cross Border Repatriation', type:'yesno'},
+      {id:'spillageCleanUpCover', label:'Additional Cover — Spillage & Clean-up Cover', type:'yesno'},
+      {id:'personalAccidentOnDrivers', label:'Additional Cover — Personal Accident on Driver/s', type:'yesno'},
+      {id:'windscreenCover', label:'Additional Cover — Windscreen Cover', type:'yesno'},
+      {id:'increasedThirdPartyLiability', label:'Additional Cover — Increased Third Party Liability', type:'yesno'},
+      {id:'increasedTplLimit', label:'Increased Third Party Liability — Limit (R)', type:'text'},
+      {id:'basisMarketValue', label:'Basis of Indemnity — Market Value', type:'yesno'},
+      {id:'basisRetailValue', label:'Basis of Indemnity — Retail Value', type:'yesno'},
+      {id:'basisAgreedValue', label:'Basis of Indemnity — Agreed Value', type:'yesno'},
+    ],
+    table:{
+      label:'Vehicle Schedule',
+      columns:[
+        {id:'year', label:'Year', type:'text'},
+        {id:'make', label:'Make', type:'text'},
+        {id:'model', label:'Model / Variant', type:'text'},
+        {id:'registration', label:'Registration Number', type:'text'},
+        {id:'retailValue', label:'Retail Value (R)', type:'text'},
+        {id:'financed', label:'Financed?', type:'select', options:['','Yes','No']},
+      ],
+      minRows:1
+    }
+  },
+  {
+    id:'vap', title:'Value Added Products',
+    fields:[
+      {id:'ownDamageExcessReducer', label:'Own Damage Excess Reducer (Partial Loss)', type:'yesno'},
+      {id:'theftHijackExcessReducer', label:'Theft & Hijack Excess Reducer (Total Loss)', type:'yesno'},
+      {id:'thirdPartyExcessReducer', label:'Third Party Excess Reducer', type:'yesno'},
+      {id:'lossOfUseDowntime', label:'Loss of Use / Downtime', type:'yesno'},
+      {id:'lossOfUseVehicles', label:'Loss of Use — How Many Vehicles', type:'text'},
+      {id:'lossOfUseSumInsured', label:'Loss of Use — Sum Insured per Vehicle (R)', type:'text'},
+      {id:'lossOfUseWeeks', label:'Loss of Use — Number of Weeks', type:'text'},
+      {id:'creditShortfall', label:'Credit Shortfall', type:'yesno'},
+      {id:'creditShortfallVehicles', label:'Credit Shortfall — How Many Vehicles', type:'text'},
+      {id:'depositProtector', label:'Deposit Protector', type:'yesno'},
+      {id:'depositProtectorVehicles', label:'Deposit Protector — How Many Vehicles', type:'text'},
+      {id:'depositProtectorSumInsured', label:'Deposit Protector — Sum Insured per Vehicle (R)', type:'text'},
+      {id:'crossBorderTowing', label:'Cross Border Towing', type:'yesno'},
+      {id:'crossBorderTowingVehicles', label:'Cross Border Towing — How Many Vehicles', type:'text'},
+      {id:'crossBorderTowingSumInsured', label:'Cross Border Towing — Sum Insured per Vehicle (R)', type:'text'},
+    ]
+  },
+  {
+    id:'mtpl', title:'Motor Third Party Liability',
+    fields:[
+      {id:'mtplLimitRequired', label:'Limit Required (R)', type:'text'},
+      {id:'toolOfTradeExtension', label:'Must We Include — Tool of Trade Extension', type:'yesno'},
+      {id:'toolOfTradeAmount', label:'Tool of Trade Extension — Amount (R)', type:'text'},
+    ]
+  },
+  {
+    id:'git', title:'Goods-in-Transit',
+    fields:[
+      {id:'gitNumberOfVehicles', label:'Number of Vehicles', type:'text'},
+      {id:'gitLoadLimitGeneral', label:'Load Limit — Cargo General Limit (R)', type:'text'},
+      {id:'gitLoadLimitSpecified1', label:'Load Limit — Specified Cargo 1', type:'text'},
+      {id:'gitLoadLimitSpecified1Amt', label:'Specified Cargo 1 — Amount (R)', type:'text'},
+      {id:'gitLoadLimitSpecified2', label:'Load Limit — Specified Cargo 2', type:'text'},
+      {id:'gitLoadLimitSpecified2Amt', label:'Specified Cargo 2 — Amount (R)', type:'text'},
+      {id:'gitContainerLimits', label:'Container Limits (R)', type:'text'},
+      {id:'gitTarpsChainsNets', label:'Tarps, Chains, Nets, etc. (R)', type:'text'},
+      {id:'gitAllRisks', label:'Cover — All Risks', type:'yesno'},
+      {id:'gitFco', label:'Cover — Fire, Collision, Overturning', type:'yesno'},
+      {id:'gitFcoTheft', label:'Cover — Fire, Collision, Overturning, with Theft Following', type:'yesno'},
+      {id:'gitFcoTheftHijack', label:'Cover — Fire, Collision, Overturning, with Theft Following & Hijacking', type:'yesno'},
+      {id:'gitDos', label:'Cover — Deterioration of Temperature Controlled Stock (DOS)', type:'yesno'},
+      {id:'gitIts', label:'Cover — Incorrect Temperature Setting (ITS)', type:'yesno'},
+      {id:'gitMm', label:'Cover — Malfunction of Cooling Machinery (MM)', type:'yesno'},
+      {id:'gitDebrisRemoval', label:'Cover — Debris Removal', type:'yesno'},
+      {id:'gitDebrisRemovalExtra', label:'Debris Removal — Extra Amount (R)', type:'text'},
+      {id:'gitSalvageRecovery', label:'Cover — Salvage Recovery', type:'yesno'},
+      {id:'gitDriverFidelity', label:'Cover — Driver Fidelity', type:'yesno'},
+      {id:'gitTarpsNets', label:'Cover — Tarps and Nets (more than R15 000?)', type:'yesno'},
+      {id:'gitTarpsNetsAmount', label:'Tarps and Nets — Amount (R)', type:'text'},
+      {id:'gitContainers', label:'Cover — Containers', type:'yesno'},
+      {id:'gitContainersAmount', label:'Containers — Amount if Not Included in Insured Value (R)', type:'text'},
+    ]
+  },
+  {
+    id:'goodsConveyed', title:'Goods Conveyed (GIT — please note percentages)',
+    fields: commodityFields('conveyed')
+  },
+  {
+    id:'gitContingency', title:'Goods-in-Transit Contingency',
+    fields:[
+      {id:'subContractLoads', label:'Do You Sub-Contract Loads to Sub-Contractors?', type:'yesno'},
+      {id:'annualHaulageFee', label:'Annual Haulage Fee (Sub-Contractors Fee Only) (R)', type:'text'},
+      {id:'claimsHistorySubcontracted', label:'Claims History on Sub-Contracted Loads', type:'textarea', span2:true},
+    ]
+  },
+  {
+    id:'hazchem', title:'Hazchem Clean-up & Spillage',
+    table:{
+      columns:[
+        {id:'description', label:'Description', type:'text'},
+        {id:'registrationNumber', label:'Registration Number', type:'text'},
+        {id:'cover', label:'Cover', type:'text'},
+        {id:'limitOfIndemnity', label:'Limit of Indemnity (R)', type:'text'},
+      ],
+      minRows:2
+    }
+  },
+  {
+    id:'businessAllRisk', title:'Business All Risk',
+    table:{
+      columns:[
+        {id:'specifiedItem', label:'Specified Items', type:'text'},
+        {id:'sumInsured', label:'Sum Insured (R)', type:'text'},
+      ],
+      initialRows:[['Tarps and Nets',''],['Cell Phones','']],
+      minRows:2
+    }
+  },
+  {
+    id:'gpa', title:'Group Personal Accident',
+    fields:[
+      {id:'gpaDeath', label:'Death — Limit (R)', type:'text'},
+      {id:'gpaPermanentDisability', label:'Permanent Disability — Limit (R)', type:'text'},
+      {id:'gpaTemporaryTotalDisability', label:'Temporary Total Disability — Weeks', type:'text'},
+      {id:'gpaTemporaryTotalDisabilityLimit', label:'Temporary Total Disability — Limit (R)', type:'text'},
+      {id:'gpaMedicalExpenses', label:'Medical Expenses — Limit (R)', type:'text'},
+      {id:'gpaBurns', label:'Burns Disfigurement — Limit (R)', type:'text'},
+    ],
+    table:{
+      label:'Persons Insured',
+      columns:[
+        {id:'personInsured', label:'Person Insured', type:'text'},
+        {id:'jobDescription', label:'Job Description', type:'text'},
+        {id:'limits', label:'Limits (R)', type:'text'},
+      ],
+      minRows:1
+    }
+  },
+  {
+    id:'employersLiability', title:'Employers Liability',
+    fields:[
+      {id:'totalAnnualWageBill', label:'Total Annual Wage Bill (R)', type:'text'},
+    ],
+    table:{
+      label:'Premises',
+      columns:[
+        {id:'premises', label:'Premises', type:'text'},
+        {id:'numberOfStaff', label:'Number of Staff', type:'text'},
+        {id:'limitOfIndemnity', label:'Limit of Indemnity (R)', type:'text'},
+      ],
+      initialRows:[['Premises 1','',''],['Premises 2','',''],['Premises 3','','']],
+      minRows:1
+    }
+  },
+  {
+    id:'publicLiability', title:'Public Liability',
+    fields:[
+      {id:'plLimitRequired', label:'Limit Required (R)', type:'text'},
+      {id:'plDefectiveWorkmanship', label:'Must We Include — Defective Workmanship', type:'yesno'},
+      {id:'plDefectiveWorkmanshipAmt', label:'Defective Workmanship — Amount (R)', type:'text'},
+      {id:'plProductsLiability', label:'Must We Include — Products Liability', type:'yesno'},
+      {id:'plProductsLiabilityAmt', label:'Products Liability — Amount (R)', type:'text'},
+      {id:'plDirectorsOfficers', label:'Must We Include — Directors & Officers Liability', type:'yesno'},
+      {id:'plDirectorsOfficersAmt', label:'Directors & Officers Liability — Amount (R)', type:'text'},
+      {id:'plWorkAwayFromPremises', label:'Must We Include — Work Away from Premises', type:'yesno'},
+      {id:'plWorkAwayFromPremisesAmt', label:'Work Away from Premises — Amount (R)', type:'text'},
+    ]
+  },
+  {
+    id:'stockThroughput', title:'Stock Throughput',
+    table:{
+      label:'Stock Held at Premises',
+      columns:[
+        {id:'premises', label:'Premises / Address', type:'text'},
+        {id:'stockCommodity', label:'Stock / Commodity', type:'text'},
+        {id:'destination', label:'Destination', type:'text'},
+        {id:'value', label:'Value (R)', type:'text'},
+      ],
+      initialRows:[['Premises 1','','',''],['Premises 2','','',''],['Premises 3','','',''],['Premises 4','','','']],
+      minRows:1
+    }
+  },
+  {
+    id:'freightForwarding', title:'Freight Forwarding',
+    fields:[
+      {id:'administerManageFreightForwarding', label:'Do You Administer and Manage Freight Forwarding?', type:'yesno'},
+      {id:'warehouseDispatchThirdPartyStock', label:'Do You Warehouse and Dispatch Third Party Stock?', type:'yesno'},
+      {id:'thirdPartyStockAmount', label:'Third Party Stock — Amount (R)', type:'text'},
+    ],
+    table:{
+      label:'Products / Destinations',
+      columns:[
+        {id:'productDescription', label:'Product Description', type:'text'},
+        {id:'destinationCountry', label:'Destination / Country', type:'text'},
+        {id:'limitPerConveyance', label:'Limit per Conveyance (R)', type:'text'},
+      ],
+      minRows:1
+    },
+    table2:{
+      label:'Areas of Warehouse(s) or Premises',
+      columns:[
+        {id:'address', label:'Address', type:'text'},
+        {id:'totalValueOfContents', label:'Total Value of Contents (R)', type:'text'},
+      ],
+      minRows:1
+    }
+  },
+  {
+    id:'officersDirectorsLiability', title:'Officers & Directors Liability',
+    table:{
+      label:'Premises',
+      columns:[
+        {id:'premises', label:'Premises', type:'text'},
+        {id:'limitOfIndemnity', label:'Limit of Indemnity (R)', type:'text'},
+      ],
+      initialRows:[['Premises 1',''],['Premises 2',''],['Premises 3',''],['Premises 4','']],
+      minRows:1
+    }
+  },
+  {
+    id:'fidelityGuarantee', title:'Fidelity Guarantee',
+    table:{
+      columns:[
+        {id:'description', label:'Description', type:'text'},
+        {id:'cover', label:'Cover', type:'text'},
+        {id:'limitOfIndemnity', label:'Limit of Indemnity (R)', type:'text'},
+      ],
+      minRows:2
+    }
+  },
+  {
+    id:'cyberCrime', title:'Cyber Crime',
+    table:{
+      columns:[
+        {id:'description', label:'Description', type:'text'},
+        {id:'cover', label:'Cover', type:'text'},
+        {id:'limitOfIndemnity', label:'Limit of Indemnity (R)', type:'text'},
+      ],
+      minRows:2
+    }
+  },
+  {
+    id:'kidnapRansom', title:'Kidnap & Ransom',
+    table:{
+      columns:[
+        {id:'description', label:'Description', type:'text'},
+        {id:'cover', label:'Cover', type:'text'},
+        {id:'limitOfIndemnity', label:'Limit of Indemnity (R)', type:'text'},
+      ],
+      minRows:2
+    }
+  },
+  {
+    id:'broadformLiability', title:'Broadform Liability',
+    table:{
+      columns:[
+        {id:'description', label:'Description', type:'text'},
+        {id:'cover', label:'Cover', type:'text'},
+        {id:'limitOfIndemnity', label:'Limit of Indemnity (R)', type:'text'},
+      ],
+      minRows:2
+    }
+  },
+  {
+    id:'notQuoted', title:'Policy Sections Not Quoted For',
+    table:{
+      label:'Cover Needed / Sum Insured',
+      columns:[
+        {id:'section', label:'Section', type:'text'},
+        {id:'coverNeeded', label:'Cover Needed', type:'select', options:['','Yes','No']},
+        {id:'sumInsured', label:'Sum Insured (R)', type:'text'},
+      ],
+      initialRows:[
+        ['Fire & Allied Perils','',''],
+        ['Buildings Combined','',''],
+        ['Business Interruption','',''],
+        ['Accounts Receivable','',''],
+        ['Accidental Damage','',''],
+        ['Office Premises','',''],
+        ['Electronic Equipment','',''],
+        ['Glass','',''],
+        ['Motor Traders Internal Risk','',''],
+        ['Motor Traders External Risk','',''],
+        ['Machinery Breakdown','',''],
+        ['Home Owners','',''],
+        ['Credit Guarantee','',''],
+      ],
+      minRows:1
+    }
+  },
+  {
+    id:'declaration', title:'Declaration',
+    fields:[
+      {id:'declarationConfirmed', label:'Broker confirms all information supplied is true and correct, on the applicant\'s behalf', type:'yesno'},
+      {id:'declarationDate', label:'Date', type:'date'},
+    ]
+  },
+];
+
+const state = {};
+const tableState = {};
+
+FORM_SECTIONS.forEach(s => {
+  if (s.fields) s.fields.forEach(f => { state[f.id] = f.default || ''; });
+  if (s.table) tableState[s.id] = { primary: (s.table.initialRows ? s.table.initialRows.map(r=>[...r]) : Array.from({length:s.table.minRows||1}, () => s.table.columns.map(()=>''))) };
+  if (s.table2) tableState[s.id].secondary = Array.from({length:s.table2.minRows||1}, () => s.table2.columns.map(()=>''));
+});
+
+function renderField(f){
+  const val = state[f.id] ?? '';
+  if (f.type === 'yesno'){
+    return `
+      <div class="field yesno ${f.span2?'span2':''}">
+        <label class="q">${escapeHtml(f.label)}</label>
+        <select data-field="${f.id}" onchange="onFieldChange('${f.id}', this.value)">
+          ${YESNO.map(o=>`<option value="${o.value}" ${o.value===val?'selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+  if (f.type === 'select'){
+    return `
+      <div class="field ${f.span2?'span2':''}">
+        <label>${escapeHtml(f.label)}</label>
+        <select data-field="${f.id}" onchange="onFieldChange('${f.id}', this.value)">
+          ${f.options.map(o=>`<option value="${o.value}" ${o.value===val?'selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+  if (f.type === 'textarea'){
+    return `
+      <div class="field ${f.span2?'span2':''}">
+        <label>${escapeHtml(f.label)}</label>
+        <textarea data-field="${f.id}" oninput="onFieldChange('${f.id}', this.value)">${escapeHtml(val)}</textarea>
+      </div>`;
+  }
+  if (f.type === 'percent'){
+    return `
+      <div class="field pct ${f.span2?'span2':''}">
+        <label>${escapeHtml(f.label)}</label>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" data-field="${f.id}" value="${escapeHtml(val)}"
+          oninput="onPercentInput(this, '${f.id}')">
+        <span class="pct-sign">%</span>
+      </div>`;
+  }
+  if (f.type === 'date'){
+    return `
+      <div class="field ${f.span2?'span2':''}">
+        <label>${escapeHtml(f.label)}</label>
+        <input type="date" data-field="${f.id}" value="${escapeHtml(val)}"
+          oninput="onFieldChange('${f.id}', this.value)">
+      </div>`;
+  }
+  return `
+    <div class="field ${f.span2?'span2':''}">
+      <label>${escapeHtml(f.label)}</label>
+      <input type="text" data-field="${f.id}" value="${escapeHtml(val)}"
+        oninput="onFieldChange('${f.id}', this.value)">
+    </div>`;
+}
+
+function renderTable(sectionId, tableDef, which){
+  const rows = which === 'secondary' ? tableState[sectionId].secondary : tableState[sectionId].primary;
+  const cols = tableDef.columns;
+  const rowsHtml = rows.map((row, ri) => `
+    <tr>
+      ${cols.map((c, ci) => {
+        const cellVal = row[ci] ?? '';
+        if (c.type === 'select'){
+          const opts = c.options.map(o => typeof o === 'string' ? {value:o,label:o||'Select'} : o);
+          return `<td><select onchange="onTableCellChange('${sectionId}','${which}',${ri},${ci},this.value)">
+            ${opts.map(o=>`<option value="${o.value}" ${o.value===cellVal?'selected':''}>${o.label}</option>`).join('')}
+          </select></td>`;
+        }
+        return `<td><input type="text" value="${escapeHtml(cellVal)}"
+          oninput="onTableCellChange('${sectionId}','${which}',${ri},${ci},this.value)"></td>`;
+      }).join('')}
+      <td><button class="rm-row" title="Remove row" onclick="removeTableRow('${sectionId}','${which}',${ri})">×</button></td>
+    </tr>`).join('');
+
+  return `
+    ${tableDef.label ? `<div class="field" style="margin-top:14px;"><label>${escapeHtml(tableDef.label)}</label></div>` : ''}
+    <table class="rep-table">
+      <thead><tr>${cols.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}<th></th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <button class="add-row-btn" onclick="addTableRow('${sectionId}','${which}')">+ Add Row</button>
+  `;
+}
+
+function renderSection(section){
+  const fieldsHtml = section.fields
+    ? `<div class="field-grid">${section.fields.map(renderField).join('')}</div>`
+    : '';
+  const tableHtml = section.table ? renderTable(section.id, section.table, 'primary') : '';
+  const table2Html = section.table2 ? renderTable(section.id, section.table2, 'secondary') : '';
+
+  return `
+    <div class="section" id="section-${section.id}">
+      <div class="section-header" onclick="toggleSection('${section.id}')">
+        <span>${escapeHtml(section.title)}</span>
+        <span class="chev">▾</span>
+      </div>
+      <div class="section-body">
+        ${fieldsHtml}
+        ${tableHtml}
+        ${table2Html}
+      </div>
+    </div>`;
+}
+
+function renderAll(){
+  document.getElementById('formRoot').innerHTML = FORM_SECTIONS.map(renderSection).join('');
+}
+
+function toggleSection(id){
+  document.getElementById(`section-${id}`).classList.toggle('collapsed');
+}
+
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function onFieldChange(id, value){ state[id] = value; }
+
+function onPercentInput(inputEl, id){
+  let v = inputEl.value.replace(/[^0-9]/g, '');
+  v = v.replace(/^0+(?=\d)/, '');
+  if (v !== '' && Number(v) > 100) v = '100';
+  inputEl.value = v;
+  state[id] = v;
+}
+
+function onTableCellChange(sectionId, which, rowIndex, colIndex, value){
+  tableState[sectionId][which][rowIndex][colIndex] = value;
+}
+
+function addTableRow(sectionId, which){
+  const section = FORM_SECTIONS.find(s => s.id === sectionId);
+  const tableDef = which === 'secondary' ? section.table2 : section.table;
+  tableState[sectionId][which].push(tableDef.columns.map(()=>''));
+  renderAll();
+  applyCollapsedStateAfterRerender();
+}
+
+function removeTableRow(sectionId, which, rowIndex){
+  const arr = tableState[sectionId][which];
+  if (arr.length <= 1) return;
+  arr.splice(rowIndex, 1);
+  renderAll();
+  applyCollapsedStateAfterRerender();
+}
+
+let collapsedSections = new Set();
+function applyCollapsedStateAfterRerender(){
+  collapsedSections.forEach(id => {
+    const el = document.getElementById(`section-${id}`);
+    if (el) el.classList.add('collapsed');
+  });
+}
+document.addEventListener('click', (e) => {
+  const header = e.target.closest('.section-header');
+  if (!header) return;
+  const section = header.closest('.section');
+  const id = section.id.replace('section-', '');
+  if (section.classList.contains('collapsed')) collapsedSections.delete(id);
+  else collapsedSections.add(id);
+});
+
+function buildSectionsPayload(){
+  return FORM_SECTIONS.map(section => {
+    const out = { title: section.title };
+    if (section.fields){
+      out.fields = section.fields.map(f => ({ label: f.label, value: state[f.id] }));
+    }
+    if (section.table){
+      out.table = {
+        headers: section.table.columns.map(c => c.label),
+        rows: tableState[section.id].primary,
+      };
+      if (section.table.label) out.table.label = section.table.label;
+    }
+    if (section.table2){
+      out.table2 = {
+        headers: section.table2.columns.map(c => c.label),
+        rows: tableState[section.id].secondary,
+      };
+    }
+    return out;
+  });
+}
+
+async function validateToken(){
+  const token = getBrokerToken();
+  const statusEl = document.getElementById('tokenStatus');
+  const genBtn = document.getElementById('generateBtn');
+
+  if (!token){
+    statusEl.textContent = 'No token entered';
+    statusEl.className = 'pending';
+    genBtn.disabled = true;
+    return;
+  }
+
+  statusEl.textContent = 'Checking…';
+  statusEl.className = 'pending';
+
+  try{
+    const res = await fetch(`${BACKEND_URL}/validate-token`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token })
+    });
+    const json = await res.json();
+    if (json.valid){
+      statusEl.textContent = `✓ ${json.broker?.name || 'Broker'} verified`;
+      statusEl.className = 'ok';
+      genBtn.disabled = false;
+    } else {
+      statusEl.textContent = `Invalid token (${json.reason || 'unknown'})`;
+      statusEl.className = 'bad';
+      genBtn.disabled = true;
+    }
+  } catch(err){
+    statusEl.textContent = 'Could not reach server';
+    statusEl.className = 'bad';
+    genBtn.disabled = true;
+  }
+}
+
+async function generatePdf(){
+  const btn = document.getElementById('generateBtn');
+  const statusLine = document.getElementById('statusLine');
+  const token = getBrokerToken();
+
+  if (!token){
+    showToast('Enter your broker token first.', true);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  statusLine.textContent = 'Generating PDF…';
+
+  try{
+    const sections = buildSectionsPayload();
+    const meta = {
+      insuredName: state.insuredName || 'client',
+      dateGenerated: new Date().toLocaleDateString('en-ZA', { day:'numeric', month:'long', year:'numeric' }),
+    };
+
+    const res = await fetch(`${BACKEND_URL}/generate-pdf`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, meta, sections })
+    });
+
+    if (!res.ok){
+      const errJson = await res.json().catch(()=>({}));
+      throw new Error(errJson.error || `Server returned ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Libra_Needs_Analysis_${(meta.insuredName||'client').replace(/[^a-z0-9]+/gi,'_')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    statusLine.textContent = 'PDF downloaded.';
+    showToast('Needs Analysis PDF generated successfully.');
+  } catch(err){
+    statusLine.textContent = 'Generation failed.';
+    showToast(`Could not generate PDF: ${err.message}`, true);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(()=>{ t.className = 'toast'; }, 4500);
+}
+
+renderAll();
+const savedToken = getBrokerToken();
+if (savedToken) document.getElementById('brokerTokenInput').value = savedToken;
+validateToken();
+</script>
+</body>
+</html>
