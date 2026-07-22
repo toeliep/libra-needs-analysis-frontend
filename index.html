@@ -19,6 +19,8 @@
   *{box-sizing:border-box;}
   body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);}
 
+  /* Masthead — deliberately mirrors Riya's masthead so the tool feels like
+     part of the same family of tools, even though it's a separate deploy */
   .masthead{
     background:var(--navy); color:#fff; padding:14px 24px;
     display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
@@ -91,6 +93,7 @@
     position:absolute; right:9px; top:29px; font-size:12px; color:var(--muted); pointer-events:none;
   }
 
+  /* Repeatable tables (vehicles, hazchem, GPA persons, etc.) */
   .rep-table{width:100%; border-collapse:collapse; margin-top:6px;}
   .rep-table th{
     background:#F3F4F6; font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
@@ -135,6 +138,64 @@
     .field-grid{grid-template-columns:1fr;}
     .masthead-right input{width:150px;}
   }
+
+  /* Smart Input panel */
+  .si-panel{
+    background:#fff; border:1px solid var(--border); border-radius:4px;
+    margin-bottom:20px; overflow:hidden;
+  }
+  .si-tabs{display:flex; border-bottom:1px solid var(--border);}
+  .si-tab{
+    flex:1; background:none; border:none; padding:12px; cursor:pointer;
+    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.4px;
+    color:var(--muted); border-bottom:2px solid transparent;
+  }
+  .si-tab.active{color:var(--navy); border-bottom-color:var(--gold); font-weight:700;}
+  .si-tab-content{padding:16px 20px; display:none;}
+  .si-tab-content.active{display:block;}
+  .si-tab-content textarea{
+    width:100%; min-height:100px; font-family:var(--sans); font-size:13px; padding:9px;
+    border:1px solid var(--border); border-radius:3px; resize:vertical;
+  }
+  .si-tab-content input[type=file]{font-size:13px;}
+  .si-row{display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;}
+  .si-btn{
+    background:var(--navy); color:#fff; border:none; font-weight:600;
+    font-size:12px; padding:9px 18px; border-radius:3px; cursor:pointer;
+  }
+  .si-btn:hover{filter:brightness(1.15);}
+  .si-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .si-btn.record{background:#B91C1C;}
+  .si-status{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:8px;}
+  .si-status.ok{color:#166534;}
+  .si-status.bad{color:#B91C1C;}
+  .si-hint{font-size:12px; color:var(--muted); margin-bottom:8px;}
+
+  /* Email buttons + panel */
+  .email-btn{
+    background:#fff; color:var(--navy); border:1px solid var(--navy); font-weight:600;
+    font-size:12px; padding:11px 16px; border-radius:3px; cursor:pointer;
+  }
+  .email-btn:hover{background:#F3F4F6;}
+  .email-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .insurer-panel{
+    position:fixed; inset:0; background:rgba(11,31,58,0.5); display:none;
+    align-items:center; justify-content:center; z-index:1000;
+  }
+  .insurer-panel.show{display:flex;}
+  .insurer-box{
+    background:#fff; border-radius:6px; padding:24px; width:480px; max-width:92vw;
+    max-height:85vh; overflow-y:auto;
+  }
+  .insurer-box h3{margin:0 0 4px; font-size:16px; color:var(--navy);}
+  .insurer-box .hint{font-size:12px; color:var(--muted); margin-bottom:16px;}
+  .insurer-row{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .insurer-row label{width:80px; font-size:12px; color:var(--ink); flex-shrink:0;}
+  .insurer-row input{flex:1; font-size:12px; padding:6px 8px; border:1px solid var(--border); border-radius:3px;}
+  .insurer-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:16px;}
+  .insurer-actions button{padding:9px 16px; border-radius:3px; font-size:12px; cursor:pointer;}
+  .insurer-actions .cancel{background:none; border:1px solid var(--border); color:var(--muted);}
+  .insurer-actions .send{background:var(--gold); border:none; color:var(--navy); font-weight:700;}
 </style>
 </head>
 <body>
@@ -159,23 +220,86 @@
     doesn't apply to this client.
   </div>
 
+  <div class="si-panel">
+    <div class="si-tabs">
+      <button class="si-tab active" data-tab="paste" onclick="switchSiTab('paste')">Paste Text</button>
+      <button class="si-tab" data-tab="file" onclick="switchSiTab('file')">Upload File</button>
+      <button class="si-tab" data-tab="voice" onclick="switchSiTab('voice')">Voice Note</button>
+    </div>
+    <div class="si-tab-content active" id="si-paste">
+      <div class="si-hint">Paste an email, WhatsApp message, or notes about this client — Libra will fill in what it can find.</div>
+      <textarea id="siPasteText" placeholder="e.g. Insured is Flatland Pty Ltd, director JJ Nel..."></textarea>
+      <div class="si-row">
+        <button class="si-btn" onclick="extractFromPaste()">Extract &amp; Populate</button>
+      </div>
+      <div class="si-status" id="siPasteStatus"></div>
+    </div>
+    <div class="si-tab-content" id="si-file">
+      <div class="si-hint">PDF or image (PNG/JPEG/WebP) only — Word documents aren't supported yet.</div>
+      <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp">
+      <div class="si-row">
+        <button class="si-btn" onclick="extractFromFile()">Extract &amp; Populate</button>
+      </div>
+      <div class="si-status" id="siFileStatus"></div>
+    </div>
+    <div class="si-tab-content" id="si-voice">
+      <div class="si-hint">Record a voice note now, or upload a previously saved one (e.g. from WhatsApp).</div>
+      <div class="si-row">
+        <button class="si-btn record" id="siRecordBtn" onclick="toggleRecording()">🎤 Start Recording</button>
+        <input type="file" id="siAudioInput" accept="audio/*">
+      </div>
+      <div class="si-row">
+        <button class="si-btn" onclick="extractFromVoice()">Extract &amp; Populate</button>
+      </div>
+      <div class="si-status" id="siVoiceStatus"></div>
+    </div>
+  </div>
+
   <div id="formRoot"></div>
 </div>
 
 <div class="footer-bar">
   <span class="status" id="statusLine">Ready.</span>
+  <button class="email-btn" id="emailBrokerBtn" onclick="emailToBroker()">Email to Broker</button>
+  <button class="email-btn" id="emailInsurersBtn" onclick="openInsurerPanel()">Email to Insurers</button>
   <button class="generate-btn" id="generateBtn" onclick="generatePdf()">Generate Needs Analysis PDF</button>
+</div>
+
+<div class="insurer-panel" id="insurerPanel">
+  <div class="insurer-box">
+    <h3>Email to Insurers</h3>
+    <div class="hint">Confirm each insurer's email address before sending — these aren't pre-filled, so you don't accidentally send client details to the wrong address.</div>
+    <div class="insurer-row"><label>Santam</label><input type="email" id="insurer_santam" placeholder="quotes@santam.co.za"></div>
+    <div class="insurer-row"><label>Hollard</label><input type="email" id="insurer_hollard" placeholder="quotes@hollard.co.za"></div>
+    <div class="insurer-row"><label>Lombard</label><input type="email" id="insurer_lombard" placeholder="quotes@lombard.co.za"></div>
+    <div class="insurer-row"><label>ONE</label><input type="email" id="insurer_one" placeholder="quotes@one.co.za"></div>
+    <div class="insurer-row"><label>Senate</label><input type="email" id="insurer_senate" placeholder="quotes@senate.co.za"></div>
+    <div class="insurer-row"><label>Merx</label><input type="email" id="insurer_merx" placeholder="quotes@merx.co.za"></div>
+    <div class="insurer-actions">
+      <button class="cancel" onclick="closeInsurerPanel()">Cancel</button>
+      <button class="send" onclick="sendToInsurers()">Send</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
+/* ============================================================
+   BACKEND
+   ============================================================ */
 const BACKEND_URL = 'https://libra-needs-analysis-backend-production.up.railway.app';
 
 function getBrokerToken(){
   return localStorage.getItem('riya_broker_token') || '';
 }
 
+/* ============================================================
+   FORM DEFINITION
+   Every section is data, not hand-coded markup, so Stage 2
+   (Smart Input) can populate the same field IDs later without
+   touching the renderer.
+   ============================================================ */
 const YESNO = [
   {value:'', label:'Select'},
   {value:'Yes', label:'Yes'},
@@ -194,6 +318,7 @@ const DRIVERS_PER_VEHICLE = [
   {value:'2', label:'2'},
 ];
 
+// Reused across "Commodities" and "Goods Conveyed" — same list, form uses it twice
 const COMMODITY_ROWS = [
   ['food','Food'],['freshProduce','Fresh Produce'],['livestock','Livestock'],
   ['buildingMaterial','Building Material'],['steelProducts','Steel Products'],
@@ -643,8 +768,11 @@ const FORM_SECTIONS = [
   },
 ];
 
-const state = {};
-const tableState = {};
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {}; // fieldId -> value
+const tableState = {}; // sectionId -> { primary: [[...]], secondary: [[...]] }
 
 FORM_SECTIONS.forEach(s => {
   if (s.fields) s.fields.forEach(f => { state[f.id] = f.default || ''; });
@@ -652,6 +780,9 @@ FORM_SECTIONS.forEach(s => {
   if (s.table2) tableState[s.id].secondary = Array.from({length:s.table2.minRows||1}, () => s.table2.columns.map(()=>''));
 });
 
+/* ============================================================
+   RENDERING
+   ============================================================ */
 function renderField(f){
   const val = state[f.id] ?? '';
   if (f.type === 'yesno'){
@@ -696,6 +827,7 @@ function renderField(f){
           oninput="onFieldChange('${f.id}', this.value)">
       </div>`;
   }
+  // default: text
   return `
     <div class="field ${f.span2?'span2':''}">
       <label>${escapeHtml(f.label)}</label>
@@ -766,8 +898,14 @@ function escapeHtml(str){
   return String(str ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+/* ============================================================
+   FIELD / TABLE CHANGE HANDLERS
+   ============================================================ */
 function onFieldChange(id, value){ state[id] = value; }
 
+// Percent fields use a text input (see field-type bug notes) — strip any
+// leading zero as the person types (so "0" + "9" + "0" becomes "90", not
+// "090"), strip non-digits, and clamp to 0-100.
 function onPercentInput(inputEl, id){
   let v = inputEl.value.replace(/[^0-9]/g, '');
   v = v.replace(/^0+(?=\d)/, '');
@@ -790,12 +928,14 @@ function addTableRow(sectionId, which){
 
 function removeTableRow(sectionId, which, rowIndex){
   const arr = tableState[sectionId][which];
-  if (arr.length <= 1) return;
+  if (arr.length <= 1) return; // keep at least one row
   arr.splice(rowIndex, 1);
   renderAll();
   applyCollapsedStateAfterRerender();
 }
 
+// re-render collapses everything back open; remember which sections were
+// collapsed so add/remove row doesn't jolt the whole page open again
 let collapsedSections = new Set();
 function applyCollapsedStateAfterRerender(){
   collapsedSections.forEach(id => {
@@ -812,6 +952,9 @@ document.addEventListener('click', (e) => {
   else collapsedSections.add(id);
 });
 
+/* ============================================================
+   PAYLOAD ASSEMBLY (matches backend's /generate-pdf contract)
+   ============================================================ */
 function buildSectionsPayload(){
   return FORM_SECTIONS.map(section => {
     const out = { title: section.title };
@@ -835,15 +978,22 @@ function buildSectionsPayload(){
   });
 }
 
+/* ============================================================
+   TOKEN VALIDATION
+   ============================================================ */
 async function validateToken(){
   const token = getBrokerToken();
   const statusEl = document.getElementById('tokenStatus');
   const genBtn = document.getElementById('generateBtn');
+  const emailBrokerBtn = document.getElementById('emailBrokerBtn');
+  const emailInsurersBtn = document.getElementById('emailInsurersBtn');
 
   if (!token){
     statusEl.textContent = 'No token entered';
     statusEl.className = 'pending';
     genBtn.disabled = true;
+    emailBrokerBtn.disabled = true;
+    emailInsurersBtn.disabled = true;
     return;
   }
 
@@ -860,50 +1010,75 @@ async function validateToken(){
       statusEl.textContent = `✓ ${json.broker?.name || 'Broker'} verified`;
       statusEl.className = 'ok';
       genBtn.disabled = false;
+      emailBrokerBtn.disabled = false;
+      emailInsurersBtn.disabled = false;
+      brokerEmail = json.broker?.email || '';
     } else {
       statusEl.textContent = `Invalid token (${json.reason || 'unknown'})`;
       statusEl.className = 'bad';
       genBtn.disabled = true;
+      emailBrokerBtn.disabled = true;
+      emailInsurersBtn.disabled = true;
     }
   } catch(err){
     statusEl.textContent = 'Could not reach server';
     statusEl.className = 'bad';
     genBtn.disabled = true;
+    emailBrokerBtn.disabled = true;
+    emailInsurersBtn.disabled = true;
   }
+}
+
+/* ============================================================
+   PDF GENERATION
+   ============================================================ */
+
+// Shared by download, Email to Broker, and Email to Insurers — generates
+// the PDF once and returns { blob, meta } rather than each caller
+// duplicating the fetch/error-handling logic.
+async function generatePdfBlob(){
+  const token = getBrokerToken();
+  if (!token) throw new Error('Enter your broker token first.');
+
+  const sections = buildSectionsPayload();
+  const meta = {
+    insuredName: state.insuredName || 'client',
+    dateGenerated: new Date().toLocaleDateString('en-ZA', { day:'numeric', month:'long', year:'numeric' }),
+  };
+
+  const res = await fetch(`${BACKEND_URL}/generate-pdf`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ token, meta, sections })
+  });
+
+  if (!res.ok){
+    const errJson = await res.json().catch(()=>({}));
+    throw new Error(errJson.error || `Server returned ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  return { blob, meta };
+}
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 async function generatePdf(){
   const btn = document.getElementById('generateBtn');
   const statusLine = document.getElementById('statusLine');
-  const token = getBrokerToken();
-
-  if (!token){
-    showToast('Enter your broker token first.', true);
-    return;
-  }
 
   btn.disabled = true;
   btn.classList.add('loading');
   statusLine.textContent = 'Generating PDF…';
 
   try{
-    const sections = buildSectionsPayload();
-    const meta = {
-      insuredName: state.insuredName || 'client',
-      dateGenerated: new Date().toLocaleDateString('en-ZA', { day:'numeric', month:'long', year:'numeric' }),
-    };
-
-    const res = await fetch(`${BACKEND_URL}/generate-pdf`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, meta, sections })
-    });
-
-    if (!res.ok){
-      const errJson = await res.json().catch(()=>({}));
-      throw new Error(errJson.error || `Server returned ${res.status}`);
-    }
-
-    const blob = await res.blob();
+    const { blob, meta } = await generatePdfBlob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -924,6 +1099,272 @@ async function generatePdf(){
   }
 }
 
+/* ============================================================
+   STAGE 2: SMART INPUT (Paste Text / Upload File / Voice Note)
+   ============================================================ */
+let brokerEmail = ''; // captured from validateToken(), used to default "Email to Broker"
+let mediaRecorder = null;
+let recordedChunks = [];
+
+function switchSiTab(tab){
+  document.querySelectorAll('.si-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  document.querySelectorAll('.si-tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById(`si-${tab}`).classList.add('active');
+}
+
+// Field schema is built from FORM_SECTIONS itself (not duplicated on the
+// backend) — flat fields only; repeatable tables are out of scope for v1
+// extraction and stay manual entry.
+function buildFieldSchema(){
+  const schema = [];
+  FORM_SECTIONS.forEach(section => {
+    if (!section.fields) return;
+    section.fields.forEach(f => {
+      schema.push({ id: f.id, label: f.label, type: f.type });
+    });
+  });
+  return schema;
+}
+
+// Applies extracted {fieldId: value} onto the live form: updates `state`,
+// re-renders, and re-applies whichever sections were collapsed so the
+// whole form doesn't jolt open.
+function applyExtractedValues(values){
+  let count = 0;
+  Object.keys(values || {}).forEach(id => {
+    if (id in state){
+      state[id] = values[id];
+      count++;
+    }
+  });
+  renderAll();
+  applyCollapsedStateAfterRerender();
+  return count;
+}
+
+async function extractFromPaste(){
+  const token = getBrokerToken();
+  const statusEl = document.getElementById('siPasteStatus');
+  const text = document.getElementById('siPasteText').value.trim();
+
+  if (!token){ showToast('Enter your broker token first.', true); return; }
+  if (!text){ statusEl.textContent = 'Paste some text first.'; statusEl.className = 'si-status bad'; return; }
+
+  statusEl.textContent = 'Extracting…';
+  statusEl.className = 'si-status';
+
+  try{
+    const res = await fetch(`${BACKEND_URL}/extract-text`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, sourceText: text, fieldSchema: buildFieldSchema() })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed');
+    const count = applyExtractedValues(json.values);
+    statusEl.textContent = count > 0 ? `✓ Filled ${count} field${count===1?'':'s'}.` : 'No matching fields found in that text.';
+    statusEl.className = count > 0 ? 'si-status ok' : 'si-status bad';
+  } catch(err){
+    statusEl.textContent = `Extraction failed: ${err.message}`;
+    statusEl.className = 'si-status bad';
+  }
+}
+
+async function extractFromFile(){
+  const token = getBrokerToken();
+  const statusEl = document.getElementById('siFileStatus');
+  const fileInput = document.getElementById('siFileInput');
+  const file = fileInput.files[0];
+
+  if (!token){ showToast('Enter your broker token first.', true); return; }
+  if (!file){ statusEl.textContent = 'Choose a file first.'; statusEl.className = 'si-status bad'; return; }
+
+  statusEl.textContent = 'Uploading & extracting…';
+  statusEl.className = 'si-status';
+
+  try{
+    const fileBase64 = await blobToBase64(file);
+    const res = await fetch(`${BACKEND_URL}/extract-file`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, fileBase64, mimeType: file.type, fieldSchema: buildFieldSchema() })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed');
+    const count = applyExtractedValues(json.values);
+    statusEl.textContent = count > 0 ? `✓ Filled ${count} field${count===1?'':'s'}.` : 'No matching fields found in that file.';
+    statusEl.className = count > 0 ? 'si-status ok' : 'si-status bad';
+    fileInput.value = '';
+  } catch(err){
+    statusEl.textContent = `Extraction failed: ${err.message}`;
+    statusEl.className = 'si-status bad';
+  }
+}
+
+async function toggleRecording(){
+  const btn = document.getElementById('siRecordBtn');
+  const statusEl = document.getElementById('siVoiceStatus');
+
+  if (mediaRecorder && mediaRecorder.state === 'recording'){
+    mediaRecorder.stop();
+    btn.textContent = '🎤 Start Recording';
+    return;
+  }
+
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      statusEl.textContent = 'Recording captured — click "Extract & Populate" when ready.';
+      statusEl.className = 'si-status ok';
+    };
+    mediaRecorder.start();
+    btn.textContent = '⏹ Stop Recording';
+    statusEl.textContent = 'Recording…';
+    statusEl.className = 'si-status';
+  } catch(err){
+    statusEl.textContent = `Could not access microphone: ${err.message}`;
+    statusEl.className = 'si-status bad';
+  }
+}
+
+async function extractFromVoice(){
+  const token = getBrokerToken();
+  const statusEl = document.getElementById('siVoiceStatus');
+  const audioInput = document.getElementById('siAudioInput');
+  const uploadedFile = audioInput.files[0];
+
+  if (!token){ showToast('Enter your broker token first.', true); return; }
+
+  let audioBlob = null;
+  let mimeType = 'audio/webm';
+
+  if (uploadedFile){
+    audioBlob = uploadedFile;
+    mimeType = uploadedFile.type || 'audio/webm';
+  } else if (recordedChunks.length > 0){
+    audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+  } else {
+    statusEl.textContent = 'Record a voice note or choose a file first.';
+    statusEl.className = 'si-status bad';
+    return;
+  }
+
+  statusEl.textContent = 'Transcribing & extracting…';
+  statusEl.className = 'si-status';
+
+  try{
+    const audioBase64 = await blobToBase64(audioBlob);
+    const res = await fetch(`${BACKEND_URL}/extract-voice`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, audioBase64, mimeType, fieldSchema: buildFieldSchema() })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed');
+    const count = applyExtractedValues(json.values);
+    statusEl.textContent = count > 0 ? `✓ Filled ${count} field${count===1?'':'s'}.` : 'No matching fields found in that recording.';
+    statusEl.className = count > 0 ? 'si-status ok' : 'si-status bad';
+    recordedChunks = [];
+    audioInput.value = '';
+  } catch(err){
+    statusEl.textContent = `Extraction failed: ${err.message}`;
+    statusEl.className = 'si-status bad';
+  }
+}
+
+/* ============================================================
+   STAGE 2: EMAIL (real attachment via backend /send-email)
+   ============================================================ */
+async function emailToBroker(){
+  const btn = document.getElementById('emailBrokerBtn');
+  const statusLine = document.getElementById('statusLine');
+  const token = getBrokerToken();
+
+  if (!token){ showToast('Enter your broker token first.', true); return; }
+  if (!brokerEmail){ showToast('No email address found for this broker token.', true); return; }
+
+  btn.disabled = true;
+  statusLine.textContent = 'Generating PDF and emailing to you…';
+
+  try{
+    const { blob, meta } = await generatePdfBlob();
+    const pdfBase64 = await blobToBase64(blob);
+    const fileName = `Libra_Needs_Analysis_${(meta.insuredName||'client').replace(/[^a-z0-9]+/gi,'_')}.pdf`;
+
+    const res = await fetch(`${BACKEND_URL}/send-email`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        token,
+        to: [brokerEmail],
+        subject: `Libra Needs Analysis — ${meta.insuredName}`,
+        bodyText: 'Attached is the Needs Analysis for your review before sending on to insurers.',
+        pdfBase64, fileName
+      })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || json.error || 'Send failed');
+
+    statusLine.textContent = `Emailed to ${brokerEmail}.`;
+    showToast(`Sent to ${brokerEmail}.`);
+  } catch(err){
+    statusLine.textContent = 'Email failed.';
+    showToast(`Could not send email: ${err.message}`, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function openInsurerPanel(){
+  if (!getBrokerToken()){ showToast('Enter your broker token first.', true); return; }
+  document.getElementById('insurerPanel').classList.add('show');
+}
+function closeInsurerPanel(){
+  document.getElementById('insurerPanel').classList.remove('show');
+}
+
+async function sendToInsurers(){
+  const statusLine = document.getElementById('statusLine');
+  const token = getBrokerToken();
+
+  const insurerIds = ['santam','hollard','lombard','one','senate','merx'];
+  const to = insurerIds
+    .map(id => document.getElementById(`insurer_${id}`).value.trim())
+    .filter(v => v !== '');
+
+  if (to.length === 0){
+    showToast('Enter at least one insurer email address.', true);
+    return;
+  }
+
+  closeInsurerPanel();
+  statusLine.textContent = `Generating PDF and emailing ${to.length} insurer${to.length===1?'':'s'}…`;
+
+  try{
+    const { blob, meta } = await generatePdfBlob();
+    const pdfBase64 = await blobToBase64(blob);
+    const fileName = `Libra_Needs_Analysis_${(meta.insuredName||'client').replace(/[^a-z0-9]+/gi,'_')}.pdf`;
+
+    const res = await fetch(`${BACKEND_URL}/send-email`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        token, to,
+        subject: `Needs Analysis for Quote — ${meta.insuredName}`,
+        bodyText: `Please find attached the Needs Analysis for ${meta.insuredName}. We would appreciate a quote at your earliest convenience.`,
+        pdfBase64, fileName
+      })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || json.error || 'Send failed');
+
+    statusLine.textContent = `Emailed to ${to.length} insurer${to.length===1?'':'s'}.`;
+    showToast(`Sent to: ${to.join(', ')}`);
+  } catch(err){
+    statusLine.textContent = 'Email failed.';
+    showToast(`Could not send email: ${err.message}`, true);
+  }
+}
+
 function showToast(msg, isError){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -931,6 +1372,9 @@ function showToast(msg, isError){
   setTimeout(()=>{ t.className = 'toast'; }, 4500);
 }
 
+/* ============================================================
+   INIT
+   ============================================================ */
 renderAll();
 const savedToken = getBrokerToken();
 if (savedToken) document.getElementById('brokerTokenInput').value = savedToken;
