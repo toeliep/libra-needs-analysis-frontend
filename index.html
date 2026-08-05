@@ -1018,7 +1018,8 @@ async function validateToken(){
     });
     const json = await res.json();
     if (json.valid){
-      statusEl.textContent = `✓ ${json.broker?.name || 'Broker'} verified`;
+      const creditsLeft = (json.broker?.credits !== undefined) ? json.broker.credits : null;
+statusEl.textContent = `✓ ${json.broker?.name || 'Broker'} verified` + (creditsLeft !== null ? ` — ${creditsLeft} credits left` : '');
       statusEl.className = 'ok';
       genBtn.disabled = false;
       emailBrokerBtn.disabled = false;
