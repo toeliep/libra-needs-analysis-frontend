@@ -1390,6 +1390,9 @@ renderAll();
 const savedToken = getBrokerToken();
 if (savedToken) document.getElementById('brokerTokenInput').value = savedToken;
 validateToken();
+
+window.addEventListener('dragover', function(e) { e.preventDefault(); }, false);
+window.addEventListener('drop', function(e) { e.preventDefault(); }, false);
 </script>
 </body>
 </html>
