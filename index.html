@@ -1185,15 +1185,22 @@ async function extractFromFile(){
   const statusEl = document.getElementById('siFileStatus');
   const fileInput = document.getElementById('siFileInput');
   const file = fileInput.files[0];
-
   if (!token){ showToast('Enter your broker token first.', true); return; }
   if (!file){ statusEl.textContent = 'Choose a file first.'; statusEl.className = 'si-status bad'; return; }
-
-  statusEl.textContent = 'Uploading & extracting…';
+  
+  // Ensure status element is visible
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.style.visibility = 'visible';
+    statusEl.style.opacity = '1';
+  }
+  
+  statusEl.textContent = '📁 Uploading file…';
   statusEl.className = 'si-status';
-
   try{
     const fileBase64 = await blobToBase64(file);
+    
+    statusEl.textContent = '🔄 Extracting fields…';
     const res = await fetch(`${BACKEND_URL}/extract-file`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ token, fileBase64, mimeType: file.type, fieldSchema: buildFieldSchema() })
@@ -1201,11 +1208,17 @@ async function extractFromFile(){
     const json = await res.json();
     if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed');
     const count = applyExtractedValues(json.values);
-    statusEl.textContent = count > 0 ? `✓ Filled ${count} field${count===1?'':'s'}.` : 'No matching fields found in that file.';
+    
+    statusEl.textContent = count > 0 ? `✅ Filled ${count} field${count===1?'':'s'}.` : 'No matching fields found in that file.';
     statusEl.className = count > 0 ? 'si-status ok' : 'si-status bad';
     fileInput.value = '';
+    
+    // Auto-hide after 4 seconds
+    setTimeout(() => {
+      if (statusEl) statusEl.style.display = 'none';
+    }, 4000);
   } catch(err){
-    statusEl.textContent = `Extraction failed: ${err.message}`;
+    statusEl.textContent = `❌ Extraction failed: ${err.message}`;
     statusEl.className = 'si-status bad';
   }
 }
