@@ -236,7 +236,7 @@
     </div>
     <div class="si-tab-content" id="si-file">
       <div class="si-hint">PDF or image (PNG/JPEG/WebP) only — Word documents aren't supported yet.</div>
-      <div id="siFileDropZone" ondragover="console.log('DRAGOVER fired'); event.preventDefault(); this.style.borderColor='#B8935A';" ondragleave="console.log('DRAGLEAVE fired'); this.style.borderColor='#ccc';" ondrop="console.log('DROP fired', event.dataTransfer.files); event.preventDefault(); this.style.borderColor='#ccc'; document.getElementById('siFileInput').files = event.dataTransfer.files; console.log('File assigned:', document.getElementById('siFileInput').files[0]?.name);" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('siFileInput').click();">
+     <div id="siFileDropZone" ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#B8935A';" ondragleave="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc';" ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc'; document.getElementById('siFileInput').files = event.dataTransfer.files;" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('siFileInput').click();">
        <span style="color:#666;font-size:13px;pointer-events:none;">Drag &amp; drop a file here, or click to choose one</span> 
       </div>
       <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;">
