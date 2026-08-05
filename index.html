@@ -236,13 +236,24 @@
     </div>
     <div class="si-tab-content" id="si-file">
       <div class="si-hint">PDF or image (PNG/JPEG/WebP) only — Word documents aren't supported yet.</div>
-      <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp">
+      <div id="siFileDropZone" ondragover="event.preventDefault(); this.style.borderColor='#B8935A';" ondragleave="this.style.borderColor='#ccc';" ondrop="event.preventDefault(); this.style.borderColor='#ccc'; document.getElementById('siFileInput').files = event.dataTransfer.files;" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('siFileInput').click();">
+        <span style="color:#666;font-size:13px;">Drag &amp; drop a file here, or click to choose one</span>
+      </div>
+      <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;">
       <div class="si-row">
         <button class="si-btn" onclick="extractFromFile()">Extract &amp; Populate</button>
       </div>
       <div class="si-status" id="siFileStatus"></div>
     </div>
     <div class="si-tab-content" id="si-voice">
+      <div class="si-row" style="margin-bottom:8px;">
+        <label for="siVoiceLanguage" style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Language spoken in this note</label>
+        <select id="siVoiceLanguage" style="padding:6px;border-radius:4px;">
+          <option value="auto">Auto-detect</option>
+          <option value="en">English</option>
+          <option value="af">Afrikaans</option>
+        </select>
+      </div>
       <div class="si-hint">Record a voice note now, or upload a previously saved one (e.g. from WhatsApp).</div>
       <div class="si-row">
         <button class="si-btn record" id="siRecordBtn" onclick="toggleRecording()">🎤 Start Recording</button>
@@ -1258,7 +1269,7 @@ async function extractFromVoice(){
     const audioBase64 = await blobToBase64(audioBlob);
     const res = await fetch(`${BACKEND_URL}/extract-voice`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, audioBase64, mimeType, fieldSchema: buildFieldSchema() })
+      body: JSON.stringify({ token, audioBase64, mimeType, language: (document.getElementById('siVoiceLanguage') ? document.getElementById('siVoiceLanguage').value : 'auto'), fieldSchema: buildFieldSchema() })
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed');
