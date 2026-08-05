@@ -236,10 +236,10 @@
     </div>
     <div class="si-tab-content" id="si-file">
       <div class="si-hint">PDF or image (PNG/JPEG/WebP) only — Word documents aren't supported yet.</div>
-     <div id="siFileDropZone" ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#B8935A';" ondragleave="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc';" ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc'; document.getElementById('siFileInput').files = event.dataTransfer.files;" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('siFileInput').click();">
+     <div id="siFileDropZone" ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#B8935A';" ondragleave="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc';" ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc'; accumulateSiFiles(event.dataTransfer.files);" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('siFileInput').click();">
        <span style="color:#666;font-size:13px;pointer-events:none;">Drag &amp; drop a file here, or click to choose one</span> 
       </div>
-      <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple style="display:none;">
+      <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple style="display:none;" onchange="accumulateSiFiles(this.files); this.value='';">
       <div class="si-row">
         <button class="si-btn" onclick="extractFromFile()">Extract &amp; Populate</button>
       </div>
@@ -1179,11 +1179,20 @@ async function extractFromPaste(){
     statusEl.className = 'si-status bad';
   }
 }
-async function extractFromFile(){
+window.siAccumulatedFiles = window.siAccumulatedFiles || [];
+function accumulateSiFiles(fileList){
+  const statusEl = document.getElementById('siFileStatus');
+  Array.from(fileList).forEach(f => {
+    const already = window.siAccumulatedFiles.some(existing => existing.name === f.name && existing.size === f.size);
+    if (!already) window.siAccumulatedFiles.push(f);
+  });
+  const names = window.siAccumulatedFiles.map(f => f.name).join(', ');
+  statusEl.textContent = window.siAccumulatedFiles.length + ' file(s) ready: ' + names + ' — click Extract & Populate (or add more files)';
+  statusEl.className = 'si-status';
+}async function extractFromFile(){
   const token = getBrokerToken();
   const statusEl = document.getElementById('siFileStatus');
-  const fileInput = document.getElementById('siFileInput');
-  const files = Array.from(fileInput.files);
+  const files = window.siAccumulatedFiles || [];
   if (!token){ showToast('Enter your broker token first.', true); return; }
   if (!files.length){ statusEl.textContent = 'Choose a file first.'; statusEl.className = 'si-status bad'; return; }
   let totalCount = 0;
@@ -1201,6 +1210,14 @@ async function extractFromFile(){
       if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed on ' + file.name);
       totalCount += applyExtractedValues(json.values);
     }
+    statusEl.textContent = totalCount > 0 ? `✓ Filled ${totalCount} field${totalCount===1?'':'s'} from ${files.length} file${files.length===1?'':'s'}.` : 'No matching fields found.';
+    statusEl.className = totalCount > 0 ? 'si-status ok' : 'si-status bad';
+    window.siAccumulatedFiles = [];
+  } catch(err){
+    statusEl.textContent = `Extraction failed: ${err.message}`;
+    statusEl.className = 'si-status bad';
+  }
+}
     statusEl.textContent = totalCount > 0 ? `✓ Filled ${totalCount} field${totalCount===1?'':'s'} from ${files.length} file${files.length===1?'':'s'}.` : 'No matching fields found.';
     statusEl.className = totalCount > 0 ? 'si-status ok' : 'si-status bad';
     fileInput.value = '';
