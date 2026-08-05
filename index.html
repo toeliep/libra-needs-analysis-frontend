@@ -239,7 +239,7 @@
      <div id="siFileDropZone" ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#B8935A';" ondragleave="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc';" ondrop="event.preventDefault(); event.stopPropagation(); this.style.borderColor='#ccc'; document.getElementById('siFileInput').files = event.dataTransfer.files;" style="border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('siFileInput').click();">
        <span style="color:#666;font-size:13px;pointer-events:none;">Drag &amp; drop a file here, or click to choose one</span> 
       </div>
-      <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;">
+      <input type="file" id="siFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple style="display:none;">
       <div class="si-row">
         <button class="si-btn" onclick="extractFromFile()">Extract &amp; Populate</button>
       </div>
@@ -1179,30 +1179,30 @@ async function extractFromPaste(){
     statusEl.className = 'si-status bad';
   }
 }
-
 async function extractFromFile(){
   const token = getBrokerToken();
   const statusEl = document.getElementById('siFileStatus');
   const fileInput = document.getElementById('siFileInput');
-  const file = fileInput.files[0];
-
+  const files = Array.from(fileInput.files);
   if (!token){ showToast('Enter your broker token first.', true); return; }
-  if (!file){ statusEl.textContent = 'Choose a file first.'; statusEl.className = 'si-status bad'; return; }
-
-  statusEl.textContent = 'Uploading & extracting…';
-  statusEl.className = 'si-status';
-
+  if (!files.length){ statusEl.textContent = 'Choose a file first.'; statusEl.className = 'si-status bad'; return; }
+  let totalCount = 0;
   try{
-    const fileBase64 = await blobToBase64(file);
-    const res = await fetch(`${BACKEND_URL}/extract-file`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, fileBase64, mimeType: file.type, fieldSchema: buildFieldSchema() })
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed');
-    const count = applyExtractedValues(json.values);
-    statusEl.textContent = count > 0 ? `✓ Filled ${count} field${count===1?'':'s'}.` : 'No matching fields found in that file.';
-    statusEl.className = count > 0 ? 'si-status ok' : 'si-status bad';
+    for (let i = 0; i < files.length; i++){
+      const file = files[i];
+      statusEl.textContent = `Uploading & extracting file ${i+1} of ${files.length}: ${file.name}…`;
+      statusEl.className = 'si-status';
+      const fileBase64 = await blobToBase64(file);
+      const res = await fetch(`${BACKEND_URL}/extract-file`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ token, fileBase64, mimeType: file.type, fieldSchema: buildFieldSchema() })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || json.error || 'Extraction failed on ' + file.name);
+      totalCount += applyExtractedValues(json.values);
+    }
+    statusEl.textContent = totalCount > 0 ? `✓ Filled ${totalCount} field${totalCount===1?'':'s'} from ${files.length} file${files.length===1?'':'s'}.` : 'No matching fields found.';
+    statusEl.className = totalCount > 0 ? 'si-status ok' : 'si-status bad';
     fileInput.value = '';
   } catch(err){
     statusEl.textContent = `Extraction failed: ${err.message}`;
