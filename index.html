@@ -207,7 +207,7 @@
   </div>
   <div class="masthead-right">
     <input id="brokerTokenInput" type="text" placeholder="Enter your broker token"
-      onchange="localStorage.setItem('riya_broker_token', this.value.trim()); validateToken();">
+      onchange="setBrokerToken(this.value); validateToken();">
     <span id="tokenStatus" class="pending">Checking…</span>
   </div>
 </div>
@@ -302,7 +302,15 @@
 const BACKEND_URL = 'https://libra-needs-analysis-backend-production.up.railway.app';
 
 function getBrokerToken(){
+  const match = document.cookie.match(/(?:^|;\s*)riya_shared_token=([^;]*)/);
+  if (match) return decodeURIComponent(match[1]);
   return localStorage.getItem('riya_broker_token') || '';
+}
+function setBrokerToken(value){
+  const trimmed = (value || '').trim();
+  document.cookie = 'riya_shared_token=' + encodeURIComponent(trimmed) +
+    '; domain=.riya.co.za; path=/; max-age=31536000; SameSite=Lax';
+  localStorage.setItem('riya_broker_token', trimmed);
 }
 
 /* ============================================================
